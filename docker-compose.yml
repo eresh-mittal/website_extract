@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./main.py:/app/main.py
+      - hf_cache_volume:/app/hf_cache  # Use a named volume instead of local bind mount
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HF_DOWNLOAD_TIMEOUT=600  # 10 minutes timeout for downloads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s  # Longer start period to allow for downloads
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./streamlit_ui.py:/app/streamlit_ui.py
+    environment:
+      - API_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  hf_cache_volume:
+    driver: local
